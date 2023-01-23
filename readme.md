@@ -6,8 +6,10 @@ Update start.csv to the starting state of the crossword you want to solve.
 	Mark cells with '#' if they should be filled with letters.
 	Leave "dark" or "block" cells blank.
 
-The dictionary, words.txt, is from [here](https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt)
+The dictionary, words.txt, is from [here](https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt).
 
 TODO:
-	Update the dictionary to include common n-grams
-	Select the next word to try in a more intelligent manner (maybe pick the word which gives the most options for future words)
+	Update the dictionary to include common n-grams.
+	Select the next word to try in a more intelligent manner (maybe pick the word which gives the most options for future words).
+	
+![](https://github.com/matthew-ritch/cword/blob/main/script_in_progress.png)
