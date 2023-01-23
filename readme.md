@@ -1,6 +1,6 @@
 This is a simple crossword solver/generator. Give it a board (with or without some words already filled in) and it will find solutions.
 
-Once he script has tried every possibility, it will terminate and print every solution.
+Once the script has tried every possibility, it will terminate and print every solution.
 
 Update start.csv to the starting state of the crossword you want to solve.
 	Mark cells with '#' if they should be filled with letters.
