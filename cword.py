@@ -12,8 +12,8 @@ import numpy as np
 
 def setup(st, ws):
     #take minimal grid
-    st = st[np.arange(st.shape[0])[np.any(~pd.isna(st), axis=1)], :]
-    st = st[:,np.arange(st.shape[1])[np.any(~pd.isna(st), axis=0)]]
+    #st = st[np.arange(st.shape[0])[np.any(~pd.isna(st), axis=1)], :]
+    #st = st[:,np.arange(st.shape[1])[np.any(~pd.isna(st), axis=0)]]
     #identify word locations
     amask = ~pd.isna(st)
     dmask = amask.copy()
@@ -31,34 +31,43 @@ def setup(st, ws):
                 end = i + np.argmax(pd.isna(v))
                 if end>i+1:
                     spaces.append([np.arange(i, end), (end-i)*[j]])
-                    dmask[i:,j] = False
+                    dmask[i:end,j] = False
     #add any words used in the start file        
     for sp in spaces:
         word = st[sp[0],sp[1]]
         if ~(word=='#').any():
-            ws[len(ws)]=''.join(word)
+            w = ''.join(word)
+            if ws.str.fullmatch(w).sum()==0:
+                ws[len(ws)]=w
     #change to periods
     st[st=='#'] = '.'
     return st, spaces, ws
 
 def find_next_loc(arr, spaces, ws):
     x = np.array([]).astype(int)
-    for sp in spaces:
+    inds=[]
+    for i, sp in enumerate(spaces):
         s = arr[sp[0],sp[1]]
-        if ~(s=='.').any(): 
-            x = np.append(x, -1)
+        s = ''.join(s)
+        if '.' not in s: #handle an existing full word
+            if ws.str.fullmatch(s).sum()>0: 
+                x = np.append(x, 1) #if this is in our dictionary
+            else:
+                #return -2
+                x = np.append(x, 0) #if this is not in our dictionary
         else:
-            s = ''.join(s)
+            inds.append(i) #this is a space we need to add letters to
             c = ws.str.fullmatch(s).sum()
-            x = np.append(x, c)
+            x = np.append(x, c) #append how many possible words fit here (only considering letters in this word)
     #stop conditions
     if (x==0).any(): #puzzle not possible
         return -2
-    if ~(x>=1).any(): #puzzle full
+    if ~(len(inds)>0) & (~(arr == '.').any()): #puzzle full
         return -1
     #return most constrained space
-    m = np.min(x[x>=1])
-    ind = np.argwhere(x == m)[0][0]
+    options = x[inds]
+    m = np.min(options[options>=1])
+    ind = inds[np.argwhere(options == m)[0][0]]
 
     return ind
 
@@ -67,7 +76,7 @@ def propose_words(arr, spaces, ind, ws):
     sp = spaces[ind]
     s = ''.join(a[sp[0],sp[1]])
     candidates = ws[ws.str.fullmatch(s)].reset_index(drop=True).sample(frac=1)
-    #TODO add bit which order candidates by number of options they allow
+    #TODO add bit which order candidates by number of options they allow. currently selects randomly
     return candidates
     
 def coolprint(arr):   
@@ -83,10 +92,18 @@ def coolprint(arr):
     print('\n')
 
 def main():
-    ws = pd.Series(np.loadtxt('words.txt', dtype=str)).str.lower() #this allows ws.str. regex
+    ws = pd.Series(np.loadtxt('dict/words2.txt', dtype=str)).str.lower() #this allows ws.str. regex
     ws = ws.reset_index(drop=True)
-    st = pd.read_csv('start.csv', header=None).values        
+    st = pd.read_csv('starts/ballstart.csv', header=None).values        
     st, spaces, ws = setup(st, ws)
+    
+    w_ls = np.array([len(x) for x in ws.values])
+    space_ls = np.unique([len(x[0]) for x in spaces])
+    m = np.zeros_like(ws.values)==1
+    for s in space_ls:
+        m = m | (w_ls == s)
+    ws = ws[m]
+    
     state = []
     completes=[]
     state.append(st.copy())
@@ -103,8 +120,8 @@ def main():
         
         ind = find_next_loc(arr, spaces, ws)
         if ind == -1:
-            
             completes.append(arr)
+            np.save('c.npy', completes)
             continue
         if ind == -2:
             continue
@@ -118,6 +135,16 @@ def main():
         coolprint(arr)
         
 if __name__ == '__main__':
+    # a = np.zeros((100,100))
+    # for i in range(a.shape[1]):
+    #    a[i,:]=np.arange(100)
+    # b = a.copy().transpose()
+    # c = (1*(np.sqrt((a-20)**2 + (b-20)**2) < 6)).astype(str)
+    # c[c=='0']=''
+    # c[c=='1']='#'
+    # pd.DataFrame(c).to_csv('c.csv')
+    
+       
     main()
 
         
