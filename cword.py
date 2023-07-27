@@ -41,23 +41,42 @@ def setup(st, ws):
                 ws[len(ws)]=w
     #change to periods
     st[st=='#'] = '.'
+    #mix up words
+    #ws = ws.reset_index(drop=True).sample(frac=1)
+    #sort words by letter frequencies
+    letters=[]
+    for w in ws:
+        for l in w:
+            letters.append(l)
+    letters,counts = np.unique(letters, return_counts=True)
+    counts = counts / sum(counts)
+    
+    scores = []
+    for w in ws:
+        scores.append(0)
+        for l in w:
+            scores[-1] += counts[letters==l][0]
+    order = np.argsort(scores)
+    ws = ws[order].reset_index(drop=True)
+    
     return st, spaces, ws
 
-def find_next_loc(arr, spaces, ws):
+def find_next_loc(arr, spaces, wd):
     x = np.array([]).astype(int)
     inds=[]
+    
     for i, sp in enumerate(spaces):
         s = arr[sp[0],sp[1]]
         s = ''.join(s)
         if '.' not in s: #handle an existing full word
-            if ws.str.fullmatch(s).sum()>0: 
+            if wd[len(s)].str.fullmatch(s).sum()>0: 
                 x = np.append(x, 1) #if this is in our dictionary
             else:
                 #return -2
                 x = np.append(x, 0) #if this is not in our dictionary
         else:
             inds.append(i) #this is a space we need to add letters to
-            c = ws.str.fullmatch(s).sum()
+            c = wd[len(s)].str.fullmatch(s).sum()
             x = np.append(x, c) #append how many possible words fit here (only considering letters in this word)
     #stop conditions
     if (x==0).any(): #puzzle not possible
@@ -65,17 +84,19 @@ def find_next_loc(arr, spaces, ws):
     if ~(len(inds)>0) & (~(arr == '.').any()): #puzzle full
         return -1
     #return most constrained space
-    options = x[inds]
+    options = np.array(x[inds])
+    if any(options==0):
+        return -2
     m = np.min(options[options>=1])
     ind = inds[np.argwhere(options == m)[0][0]]
 
     return ind
 
-def propose_words(arr, spaces, ind, ws):
+def propose_words(arr, spaces, ind, wd):
     a = arr.copy()
     sp = spaces[ind]
     s = ''.join(a[sp[0],sp[1]])
-    candidates = ws[ws.str.fullmatch(s)].reset_index(drop=True).sample(frac=1)
+    candidates = wd[len(s)][wd[len(s)].str.fullmatch(s)]#.reset_index(drop=True).sample(frac=1)
     #TODO add bit which order candidates by number of options they allow. currently selects randomly
     return candidates
     
@@ -94,7 +115,15 @@ def coolprint(arr):
 def main():
     ws = pd.Series(np.loadtxt('dict/words2.txt', dtype=str)).str.lower() #this allows ws.str. regex
     ws = ws.reset_index(drop=True)
-    st = pd.read_csv('starts/ballstart.csv', header=None).values        
+        
+    #st = pd.read_csv('starts/ballstart.csv', header=None).values       
+    st = pd.read_excel('starts/weather5.xlsx', header=None).values  
+    extra = pd.Series(st[:12,21].astype(str))
+    st = st[2:17, 2:17]
+    st[pd.isna(st)] = '#'
+    st[st == '.'] = '#'
+    st[(st == '?') | (st == '/')] = np.nan
+    
     st, spaces, ws = setup(st, ws)
     
     w_ls = np.array([len(x) for x in ws.values])
@@ -103,6 +132,13 @@ def main():
     for s in space_ls:
         m = m | (w_ls == s)
     ws = ws[m]
+    ws = pd.concat([extra,ws], ignore_index=True)
+    
+    l = np.array([len(y) for y in ws])
+    ls = np.unique(l)
+    wd ={}
+    for ll in ls:
+        wd[ll] = ws[l == ll]
     
     state = []
     completes=[]
@@ -118,14 +154,14 @@ def main():
         coolprint(arr)
         print(len(state), 'solutions in progress,', len(completes),'solutions found.\n')
         
-        ind = find_next_loc(arr, spaces, ws)
+        ind = find_next_loc(arr, spaces, wd)
         if ind == -1:
             completes.append(arr)
-            np.save('c.npy', completes)
+            np.save('c2.npy', completes)
             continue
         if ind == -2:
             continue
-        cs = propose_words(arr, spaces, ind, ws)
+        cs = propose_words(arr, spaces, ind, wd)
         for c in cs:
             sp = spaces[ind]
             arr[sp[0], sp[1]]=[*c]
