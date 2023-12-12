@@ -7,14 +7,11 @@ Created on Fri Jan 20 09:12:03 2023
 
 import pandas as pd
 import numpy as np
-import copy
-import time
 from setup import setup, coolprint
     
 def find_paths(graph, n):
     '''
     n is number of vertices per path in the paths to find
-    
     could make faster by removing already used possibilities earlier
     '''
     
@@ -46,7 +43,7 @@ def prune_path(graph, edges, n, p):
     words = [graph[x].possible_words for x in p]
     chains = [[x] for x in words[0]]
     finished = []
-    #TODO wtf is going on here
+    #TODO annotate what is going on here
     while chains:
         this = chains.pop()
         posn_to_add = len(this)
@@ -82,11 +79,9 @@ def prune(graph, edges, n):
 
 ws = pd.Series(np.loadtxt('dict/words2.txt', dtype=str)).str.lower().reset_index(drop=True) #this allows ws.str. regex
 st = pd.read_excel('starts/weather4.xlsx', header=None).values  
-extra = pd.Series(st[:12,21].astype(str))
 st = st[2:17, 2:17]
-
-#TODO put in functions
 graph, edges = setup(st, ws)
-t0 = time.time()
-paths = prune(graph, edges, n)
-print(time.time() - t0)
+prune(graph, edges, 1)
+
+graph
+edges

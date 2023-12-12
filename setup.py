@@ -8,7 +8,6 @@ Created on Sat Mar 18 16:42:55 2023
 
 import pandas as pd
 import numpy as np
-import copy
 
 class vertex:
     def __init__(self, identifier, rows, cols, edges, possible_words):
